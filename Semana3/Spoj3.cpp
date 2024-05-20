@@ -21,7 +21,7 @@ bool ok(vector<int>& v, int x, int c)
     return false;
 }
 
-int aggressive_cows(vector<int>& v, int n, int k)
+int agresivacas(vector<int>& v, int n, int k)
 {
     long long ans = -1;
     int maxi = 0;
@@ -47,8 +47,7 @@ int main()
     vector<int> arr = { 1, 2, 4, 8, 9 };
     int N = arr.size();
  
-    // Function call
-    int ans = aggressive_cows(arr, N, K);
+    int ans = agresivacas(arr, N, K);
     cout << ans << endl;
  
     return 0;
