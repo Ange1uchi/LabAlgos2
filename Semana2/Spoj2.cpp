@@ -15,7 +15,9 @@ bool operator<(const Data& a, const Data& b) {
     }
     return a.appear < b.appear;
 }
-
+//toma una secuencia de números, cuenta cuántas veces aparece cada número 
+//y luego imprime los números ordenados por frecuencia (mayor frecuencia primero),
+//en caso de empate, por orden de aparición. 
 int main() {
     int n;
     long c;
