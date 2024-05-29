@@ -1,5 +1,5 @@
 #include <iostream>
-
+//Llegamos a la respuesta opearando la diferencia entre el max y el min del arreglo, solo basta eso.
 int main() {
     int t;
     std::cin >> t;
