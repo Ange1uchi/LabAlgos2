@@ -93,7 +93,7 @@ int main() {
     // Ordenar el vector
     HeapSort(Freq);
 
-    // Revertimos el vector para obtener el orden correcto
+    // Invertimos el vector para obtener el orden correcto.
     invertir_vector(Freq);
 
     // Imprimimos los números ordenados por frecuencia y orden de aparición
