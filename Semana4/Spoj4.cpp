@@ -1,44 +1,211 @@
 #include <iostream>
-#include <cstdint>
 #include <vector>
+#include <cmath>
+#include <cstdint>
 
 using namespace std;
-typedef long long ll;
 
-void add(const vector<vector<ll>>& A, const vector<vector<ll>>& B, vector<vector<ll>>& C, int n) {
-    for (int i = 0; i < n; ++i)
-        for (int j = 0; j < n; ++j)
+/* Ajustar las dimensiones de las matrices para que sean potencias
+   de 2, lo cual es necesario para el algoritmo de Strassen.*/
+int nextpow2(int k){
+    return pow(2, int(ceil(log2(k))));
+}
+
+
+// Opera la suma de Matrices A y B y almacena el resultado en C.
+void sumarMatrices(const vector<vector<uint64_t>> &A, const vector<vector<uint64_t>> &B, vector<vector<uint64_t>> &C, int Dims){
+    for (int i = 0; i < Dims; i++){
+        for (int j = 0; j < Dims; j++){
             C[i][j] = A[i][j] + B[i][j];
+        }
+    }
 }
-
-void subtract(const vector<vector<ll>>& A, const vector<vector<ll>>& B, vector<vector<ll>>& C, int n) {
-    for (int i = 0; i < n; ++i)
-        for (int j = 0; j < n; ++j)
+// Opera la resta de Matrices A y B y almacena el resultado en C.
+void restarMatrices(const vector<vector<uint64_t>> &A, const vector<vector<uint64_t>> &B, vector<vector<uint64_t>> &C, int Dims){
+    for (int i = 0; i < Dims; i++){
+        for (int j = 0; j < Dims; j++){
             C[i][j] = A[i][j] - B[i][j];
+        }
+    }
 }
 
-void strassen(vector<vector<ll>>& A, vector<vector<ll>>& B, vector<vector<ll>>& C, int n);
+// Opera el producto estándar de dos matrices y almacena el resultado en C.
+void MultiBasic(const vector<vector<uint64_t>> &A, const vector<vector<uint64_t>> &B, vector<vector<uint64_t>> &C, int Dims) {
+    for (int i = 0; i < Dims; ++i) {
+        for (int j = 0; j < Dims; ++j) {
+            // Inicializamos C en 0.
+            C[i][j] = 0;
+            for (int k = 0; k < Dims; ++k) {
+                C[i][j] += A[i][k] * B[k][j];
+            }
+        }
+    }
+}
+
+// Algoritmo de Strassen para multiplicar dos matrices.
+void Strassen(const vector<vector<uint64_t>> &A, const vector<vector<uint64_t>> &B, vector<vector<uint64_t>> &C, int Dims, int lim_estandar)
+{
+     // Si la dimensión de las matrices es menor o igual al límite establecido, se realiza la multiplicación estándar:
+    if (Dims <= lim_estandar)
+    {
+        MultiBasic(A, B, C, Dims);
+        return;
+    }
+
+     // Calculamos la dimensión de las submatrices:
+    int dim_nueva = Dims / 2;
+    
+
+    /* Inicializamos vectores temporales para las submatrices A, B y C, así como para los
+       productos parciales p_1 a p_7. También un nuevo vector z de tamaño dim_nueva lleno de ceros:*/
+    vector<uint64_t> z(dim_nueva);
+    vector<vector<uint64_t>>
+        a_11(dim_nueva, z), a_12(dim_nueva, z), a_21(dim_nueva, z), a_22(dim_nueva, z),
+        b_11(dim_nueva, z), b_12(dim_nueva, z), b_21(dim_nueva, z), b_22(dim_nueva, z),
+        c_11(dim_nueva, z), c_12(dim_nueva, z), c_21(dim_nueva, z), c_22(dim_nueva, z),
+        p_1(dim_nueva, z), p_2(dim_nueva, z), p_3(dim_nueva, z), p_4(dim_nueva, z),
+        p_5(dim_nueva, z), p_6(dim_nueva, z), p_7(dim_nueva, z),
+        Result_a(dim_nueva, z), Result_b(dim_nueva, z);
+
+    // Dividimos las matrices A y B en 4 submatrices cada una:
+    // filas (i) columnas (j)
+    int i, j;
+    for (i = 0; i < dim_nueva; i++)
+    {
+        for (j = 0; j < dim_nueva; j++)
+        {
+            // elementos superiores izquierdos de A:
+            a_11[i][j] = A[i][j];
+            // elementos superiores derechos de A:
+            a_12[i][j] = A[i][j + dim_nueva];
+            // elementos inferiores izquierdos de A:
+            a_21[i][j] = A[i + dim_nueva][j];
+            // elementos inferiores derechos de A:
+            a_22[i][j] = A[i + dim_nueva][j + dim_nueva];
+
+          // Lo mismo que arriba pero para B:
+            b_11[i][j] = B[i][j];
+            b_12[i][j] = B[i][j + dim_nueva];
+            b_21[i][j] = B[i + dim_nueva][j];
+            b_22[i][j] = B[i + dim_nueva][j + dim_nueva];
+        }
+    }
+
+    // Calcular p_1 a p_7.
+    
+    //p_1 = (a_11 + a_22) * (b_11 + b_22)
+    sumarMatrices(a_11, a_22, Result_a, dim_nueva);
+    sumarMatrices(b_11, b_22, Result_b, dim_nueva);
+    Strassen(Result_a, Result_b, p_1, dim_nueva, lim_estandar);
+
+    // p_2 = (a_21 + a_22) * b_11
+    sumarMatrices(a_21, a_22, Result_a, dim_nueva);
+    Strassen(Result_a, b_11, p_2, dim_nueva, lim_estandar);
+
+    // p_3 = a_11 * (b_12 - b_22)
+    restarMatrices(b_12, b_22, Result_b, dim_nueva);
+    Strassen(a_11, Result_b, p_3, dim_nueva, lim_estandar);
+
+    // p_4 = a_22 * (b_21 - b_11)
+    restarMatrices(b_21, b_11, Result_b, dim_nueva);
+    Strassen(a_22, Result_b, p_4, dim_nueva, lim_estandar);
+
+    // p_5 = (a_11 + a_12) * b_22
+    sumarMatrices(a_11, a_12, Result_a, dim_nueva);
+    Strassen(Result_a, b_22, p_5, dim_nueva, lim_estandar);
+
+    // p_6 = (a_21 - a_11) * (b_11 + b_12)
+    restarMatrices(a_21, a_11, Result_a, dim_nueva);
+    sumarMatrices(b_11, b_12, Result_b, dim_nueva);
+    Strassen(Result_a, Result_b, p_6, dim_nueva, lim_estandar);
+
+    // p_7 = (a_12 - a_22) * (b_21 + b_22)
+    restarMatrices(a_12, a_22, Result_a, dim_nueva);
+    sumarMatrices(b_21, b_22, Result_b, dim_nueva);
+    Strassen(Result_a, Result_b, p_7, dim_nueva, lim_estandar);
+
+    // con lo anterior, calculamos las submatrices resultantes c_ij:
+
+    // c_12 = p_3 + p_5
+    sumarMatrices(p_3, p_5, c_12, dim_nueva);
+    // c_21 = p_2 + p_4
+    sumarMatrices(p_2, p_4, c_21, dim_nueva);
+    
+    // p_1 + p_4
+    sumarMatrices(p_1, p_4, Result_a, dim_nueva);
+    // lo anterior: (p1_ + p_4) + p_7
+    sumarMatrices(Result_a, p_7, Result_b, dim_nueva);
+    // c_11 = p_1 + p_4 - p_5 + p_7
+    restarMatrices(Result_b, p_5, c_11, dim_nueva);
+
+    // p_1 + p_3
+    sumarMatrices(p_1, p_3, Result_a, dim_nueva);
+    // lo anterior: (p_1 + p_3) + p_6
+    sumarMatrices(Result_a, p_6, Result_b, dim_nueva);
+    // c_22 = p_1 + p_3 - p_2 + p_6
+    restarMatrices(Result_b, p_2, c_22, dim_nueva);
+
+    // Agrupamos las submatrices resultantes c_ij en la matriz C:
+    for (i = 0; i < dim_nueva; i++)
+    {
+        for (j = 0; j < dim_nueva; j++)
+        {
+            C[i][j] = c_11[i][j];
+            C[i][j + dim_nueva] = c_12[i][j];
+            C[i + dim_nueva][j] = c_21[i][j];
+            C[i + dim_nueva][j + dim_nueva] = c_22[i][j];
+        }
+    }
+}
 
 int main() {
-    uint32_t n, i, j, d1, p1, r1, m1, d2, p2, r2, m2;
-    cin >> n >> p1 >> d1 >> r1 >> m1 >> p2 >> d2 >> r2 >> m2;
 
-    vector<vector<ll>> A(n, vector<ll>(n));
-    vector<vector<ll>> B(n, vector<ll>(n));
-    vector<vector<ll>> C(n, vector<ll>(n));
-    vector<ll> V(n);
+    uint32_t n, i, j, d1, p_1, r1, m1, d2, p_2, r2, m2;
+    cin >> n >> p_1 >> d1 >> r1 >> m1 >> p_2 >> d2 >> r2 >> m2;
 
+    /* se inicializan las matrices A, B y C de tamaño n x n, y el vector V de tamaño n
+       con valores de 0, este vector almacenará los valores resultantes de las operaciones:*/
+    vector<vector<uint32_t>> A(n, vector<uint32_t>(n));
+    vector<vector<uint32_t>> B(n, vector<uint32_t>(n));
+    vector<vector<uint64_t>> C(n, vector<uint64_t>(n));
+    vector<uint64_t> V(n, 0);
+
+    /* se generan las matirces A y B utilizando las variables de entrada: */
     for (i = 0; i < n; ++i) {
         for (j = 0; j < n; ++j) {
-            d1 = d1 * p1 + r1;
-            d2 = d2 * p2 + r2;
+            d1 = d1 * p_1 + r1;
+            d2 = d2 * p_2 + r2;
             A[i][j] = d1 >> (32 - m1);
             B[i][j] = d2 >> (32 - m2);
         }
     }
 
-    strassen(A, B, C, n);
+    /* se calcula la dimensión nueva como la siguiente potencia de 2 mayor o igual a n y se
+       inicializa A_exp, B_exp y C_exp llenas de 0, estas son las que utilizaremos para realizar
+       todo el algoritmo de Strassen. */
+    int dim_nueva = nextpow2(n);
+    vector<uint64_t> z(dim_nueva);
+    vector<vector<uint64_t>> A_exp(dim_nueva, z), B_exp(dim_nueva, z), C_exp(dim_nueva, z);
 
+    /* los valores de las matrices A y B se copian a A_exp y B_exp: */
+    for (i = 0; i < n; ++i) {
+        for (j = 0; j < n; ++j) {
+            A_exp[i][j] = static_cast<uint64_t>(A[i][j]);
+            B_exp[i][j] = static_cast<uint64_t>(B[i][j]);
+        }
+    }
+
+    // límite para cambiar a multiplicación estándar cuando el tamaño es pequeño:
+    int lim_estandar = 64; 
+    // calculo del algoritmo de Strassen: 
+    Strassen(A_exp, B_exp, C_exp, dim_nueva, lim_estandar);
+
+    // copiamos los resultados de C_exp a la matriz original C:
+    for (i = 0; i < n; ++i) {
+        for (j = 0; j < n; ++j) {
+            C[i][j] = C_exp[i][j];
+        }
+    }
 
     for (i = 0; i < n; ++i) {
         V[i] = 0;
@@ -47,104 +214,11 @@ int main() {
         }
     }
 
+    // se imprimen los valores de V separados por espacios:
     for (i = 0; i < n; ++i) {
-        cout << V[i] << (i < n - 1 ? " " : "\n");
+        cout << V[i] << " ";
     }
+    cout << endl;
 
     return 0;
-}
-
-void strassen(vector<vector<ll>>& A, vector<vector<ll>>& B, vector<vector<ll>>& C, int n) {
-    if (n == 1) {
-        C[0][0] = A[0][0] * B[0][0];
-        return;
-    }
-
-    int newSize = n / 2;
-    vector<vector<ll>> a11(newSize, vector<ll>(newSize));
-    vector<vector<ll>> a12(newSize, vector<ll>(newSize));
-    vector<vector<ll>> a21(newSize, vector<ll>(newSize));
-    vector<vector<ll>> a22(newSize, vector<ll>(newSize));
-    vector<vector<ll>> b11(newSize, vector<ll>(newSize));
-    vector<vector<ll>> b12(newSize, vector<ll>(newSize));
-    vector<vector<ll>> b21(newSize, vector<ll>(newSize));
-    vector<vector<ll>> b22(newSize, vector<ll>(newSize));
-
-    for (int i = 0; i < newSize; ++i) {
-        for (int j = 0; j < newSize; ++j) {
-            a11[i][j] = A[i][j];
-            a12[i][j] = A[i][j + newSize];
-            a21[i][j] = A[i + newSize][j];
-            a22[i][j] = A[i + newSize][j + newSize];
-
-            b11[i][j] = B[i][j];
-            b12[i][j] = B[i][j + newSize];
-            b21[i][j] = B[i + newSize][j];
-            b22[i][j] = B[i + newSize][j + newSize];
-        }
-    }
-
-    vector<vector<ll>> p1(newSize, vector<ll>(newSize));
-    vector<vector<ll>> p2(newSize, vector<ll>(newSize));
-    vector<vector<ll>> p3(newSize, vector<ll>(newSize));
-    vector<vector<ll>> p4(newSize, vector<ll>(newSize));
-    vector<vector<ll>> p5(newSize, vector<ll>(newSize));
-    vector<vector<ll>> p6(newSize, vector<ll>(newSize));
-    vector<vector<ll>> p7(newSize, vector<ll>(newSize));
-
-    vector<vector<ll>> aResult(newSize, vector<ll>(newSize));
-    vector<vector<ll>> bResult(newSize, vector<ll>(newSize));
-
-
-    add(a11, a22, aResult, newSize); // a11 + a22
-    add(b11, b22, bResult, newSize); // b11 + b22
-    strassen(aResult, bResult, p1, newSize); // p1 = (a11+a22) * (b11+b22)
-
-    add(a21, a22, aResult, newSize); // a21 + a22
-    strassen(aResult, b11, p2, newSize); // p2 = (a21+a22) * (b11)
-
-    subtract(b12, b22, bResult, newSize); // b12 - b22
-    strassen(a11, bResult, p3, newSize); // p3 = (a11) * (b12 - b22)
-
-    subtract(b21, b11, bResult, newSize); // b21 - b11
-    strassen(a22, bResult, p4, newSize); // p4 = (a22) * (b21 - b11)
-
-    add(a11, a12, aResult, newSize); // a11 + a12
-    strassen(aResult, b22, p5, newSize); // p5 = (a11+a12) * (b22)   
-
-    subtract(a21, a11, aResult, newSize); // a21 - a11
-    add(b11, b12, bResult, newSize); // b11 + b12
-    strassen(aResult, bResult, p6, newSize); // p6 = (a21-a11) * (b11+b12)
-
-    subtract(a12, a22, aResult, newSize); // a12 - a22
-    add(b21, b22, bResult, newSize); // b21 + b22
-    strassen(aResult, bResult, p7, newSize); // p7 = (a12-a22) * (b21+b22)
-
-    // Calculate c11, c12, c21, c22
-    vector<vector<ll>> c11(newSize, vector<ll>(newSize));
-    vector<vector<ll>> c12(newSize, vector<ll>(newSize));
-    vector<vector<ll>> c21(newSize, vector<ll>(newSize));
-    vector<vector<ll>> c22(newSize, vector<ll>(newSize));
-
-    add(p1, p4, aResult, newSize); // p1 + p4
-    add(aResult, p7, bResult, newSize); // p1 + p4 + p7
-    subtract(bResult, p5, c11, newSize); // c11 = p1 + p4 - p5 + p7
-
-    add(p3, p5, c12, newSize); // c12 = p3 + p5
-
-    add(p2, p4, c21, newSize); // c21 = p2 + p4
-
-    add(p1, p3, aResult, newSize); // p1 + p3
-    add(aResult, p6, bResult, newSize); // p1 + p3 + p6
-    subtract(bResult, p2, c22, newSize); // c22 = p1 + p3 - p2 + p6
-
-    // Combinar los resultados en C
-    for (int i = 0; i < newSize; ++i) {
-        for (int j = 0; j < newSize; ++j) {
-            C[i][j] = c11[i][j];
-            C[i][j + newSize] = c12[i][j];
-            C[i + newSize][j] = c21[i][j];
-            C[i + newSize][j + newSize] = c22[i][j];
-        }
-    }
 }
